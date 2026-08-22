@@ -105,10 +105,14 @@ function bufferToStream(buffer: Buffer) {
   return stream;
 }
 
-// Extrae el número de secuencia (p.ej. "0079" -> 79) de un invoice_number.
+// Extrae el número de secuencia de un invoice_number (p.ej. "AIBE-2026-0062"
+// -> 62). Coge el ÚLTIMO grupo de dígitos, no el primero: el primero suele
+// ser el año (p.ej. "2026"), que es igual para todas las facturas del año y
+// haría que todas coincidieran entre sí.
 function secuencia(invoiceNumber: string) {
-  const match = invoiceNumber.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : null;
+  const matches = invoiceNumber.match(/\d+/g);
+  if (!matches || matches.length === 0) return null;
+  return parseInt(matches[matches.length - 1], 10);
 }
 
 // ¿El nombre de un archivo ya existente en Drive contiene ese número de
