@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { issueDateForPeriod } from "@/lib/dates";
 import { pasarFacturasADriveYExcel } from "@/lib/drive-invoices";
+import { enviarYRegistrarFacturaPorCorreo } from "@/lib/email";
 
 const BUSINESS_TIME_ZONE = "Atlantic/Canary";
 
@@ -101,7 +102,7 @@ export async function generateMonthInvoices(formData: FormData) {
     });
 
   for (const subscription of subscriptions) {
-    const { error: issueError } = await supabase.rpc(
+    const { data: invoiceId, error: issueError } = await supabase.rpc(
       "issue_subscription_invoice",
       {
         p_subscription_id: subscription.id,
@@ -115,6 +116,16 @@ export async function generateMonthInvoices(formData: FormData) {
       !issueError.message.toLowerCase().includes("duplicate")
     ) {
       throw new Error(issueError.message);
+    }
+
+    /*
+     * Si la factura se acaba de crear (no era un duplicado), se envía por
+     * correo en el momento de la emisión. El resultado (enviada / sin
+     * correo / error) queda registrado en la propia factura para que el
+     * panel lo muestre.
+     */
+    if (!issueError && invoiceId) {
+      await enviarYRegistrarFacturaPorCorreo(supabase, invoiceId as string);
     }
   }
 
@@ -190,4 +201,23 @@ export async function pasarADriveYExcel(formData: FormData) {
   });
 
   redirect(`/dashboard/facturas?${params.toString()}`);
+}
+
+/*
+ * Reenvía por correo una factura ya emitida, para cuando el envío
+ * automático falló (queda registrado el error) o simplemente se quiere
+ * volver a mandar. Deja constancia del resultado en la propia factura.
+ */
+export async function reenviarFacturaCorreo(formData: FormData) {
+  const invoiceId = String(formData.get("invoice_id") ?? "");
+
+  if (!invoiceId) {
+    throw new Error("No se ha indicado la factura");
+  }
+
+  const { supabase } = await requireUser();
+
+  await enviarYRegistrarFacturaPorCorreo(supabase, invoiceId);
+
+  revalidatePath("/dashboard/facturas");
 }

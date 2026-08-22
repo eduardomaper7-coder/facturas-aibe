@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { currentPeriod, effectiveRenewalDay } from "@/lib/dates";
+import { enviarYRegistrarFacturaPorCorreo } from "@/lib/email";
 
 export async function GET(request: Request) {
   const auth = request.headers.get("authorization");
@@ -43,6 +44,17 @@ export async function GET(request: Request) {
       errors.push(`${subscription.id}: ${issueError.message}`);
     } else if (data) {
       generated += 1;
+
+      const resultadoCorreo = await enviarYRegistrarFacturaPorCorreo(
+        admin,
+        data as string
+      );
+
+      if (!resultadoCorreo.enviado && resultadoCorreo.motivo === "error") {
+        errors.push(
+          `${subscription.id}: envío de correo falló - ${resultadoCorreo.error}`
+        );
+      }
     }
   }
 

@@ -83,6 +83,12 @@ create table if not exists public.invoices (
   unique (subscription_id, billing_period)
 );
 
+-- Estado del envío por correo (se rellena al emitir la factura, tanto por
+-- el cron diario como por el botón manual "Generar facturas del mes", y
+-- también al usar el botón de reenvío manual desde el panel).
+alter table public.invoices add column if not exists email_sent_at timestamptz;
+alter table public.invoices add column if not exists email_error text;
+
 create index if not exists clients_user_id_idx on public.clients(user_id);
 create index if not exists subscriptions_user_id_idx on public.subscriptions(user_id);
 create index if not exists invoices_user_id_issue_date_idx on public.invoices(user_id, issue_date desc);

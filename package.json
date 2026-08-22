@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "latest",
     "googleapis": "latest",
     "next": "latest",
+    "nodemailer": "latest",
     "pdf-lib": "latest",
     "react": "latest",
     "react-dom": "latest",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "latest",
+    "@types/nodemailer": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "eslint": "latest",

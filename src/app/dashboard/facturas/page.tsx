@@ -5,6 +5,7 @@ import {
   deleteInvoice,
   generateMonthInvoices,
   pasarADriveYExcel,
+  reenviarFacturaCorreo,
 } from "./actions";
 
 export default async function FacturasPage({
@@ -45,7 +46,7 @@ export default async function FacturasPage({
   const { data, error } = await supabase
     .from("invoices")
     .select(
-      "id,invoice_number,issue_date,subtotal,tax_type,tax_rate,tax_amount,irpf_amount,total_amount,status,client_snapshot"
+      "id,invoice_number,issue_date,subtotal,tax_type,tax_rate,tax_amount,irpf_amount,total_amount,status,client_snapshot,email_sent_at,email_error"
     )
     .eq("billing_period", month)
     .order("issue_date", { ascending: false })
@@ -137,6 +138,7 @@ export default async function FacturasPage({
               <th>IRPF</th>
               <th>Total</th>
               <th>PDF</th>
+              <th>Envío</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -145,6 +147,7 @@ export default async function FacturasPage({
             {(data ?? []).map((invoice) => {
               const client = invoice.client_snapshot as {
                 business_name?: string;
+                email?: string;
               };
 
               return (
@@ -182,6 +185,40 @@ export default async function FacturasPage({
                   </td>
 
                   <td>
+                    {invoice.email_sent_at ? (
+                      <span style={{ color: "#16a34a", fontWeight: 600 }}>
+                        Factura Enviada Correctamente por correo
+                      </span>
+                    ) : !client.email ? (
+                      <span style={{ color: "#b45309", fontWeight: 600 }}>
+                        enviar factura vía whatsapp manualmente
+                      </span>
+                    ) : (
+                      <div style={{ display: "grid", gap: 6 }}>
+                        {invoice.email_error && (
+                          <small style={{ color: "#dc2626" }}>
+                            Error al enviar: {invoice.email_error}
+                          </small>
+                        )}
+
+                        <form action={reenviarFacturaCorreo}>
+                          <input
+                            type="hidden"
+                            name="invoice_id"
+                            value={invoice.id}
+                          />
+
+                          <button type="submit" className="secondary">
+                            {invoice.email_error
+                              ? "Reintentar envío"
+                              : "Reenviar por correo"}
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                  </td>
+
+                  <td>
                     <form action={deleteInvoice}>
                       <input
                         type="hidden"
@@ -210,7 +247,7 @@ export default async function FacturasPage({
 
             {(data ?? []).length === 0 && (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={10}>
                   No hay facturas para este mes.
                 </td>
               </tr>
