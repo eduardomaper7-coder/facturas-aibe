@@ -33,10 +33,10 @@ function getUploadAuth() {
  * dentro de "{Mes} {Año}", dentro de la carpeta raíz GOOGLE_DRIVE_AA_ROOT_ID)
  * evitando duplicados, y enlaza cada factura en la columna G de la hoja
  * "AA Factura Ingreso {Mes} {Año}" del mismo mes, sin tocar el resto de
- * columnas. El emparejamiento con la hoja se hace por importe (columna C =
- * Ingreso Bruto = subtotal + impuesto recaudado), no por nombre, porque los
- * nombres de la hoja y los del cliente en la app no siempre coinciden
- * exactamente.
+ * columnas. El emparejamiento con la hoja se hace por el nombre del negocio
+ * (columna A) contra el cliente de la factura (ignorando mayúsculas y
+ * acentos), y el importe (columna C) solo se usa como desempate si hay más
+ * de una factura con el mismo nombre de cliente en el mismo mes.
  */
 
 const MESES = [
@@ -96,6 +96,18 @@ function escapeDriveQuery(value: string) {
 
 function round2(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+// Normaliza un nombre de negocio para comparar (sin mayúsculas, sin
+// acentos, sin espacios de más) — así no hace falta que el nombre de la
+// hoja sea carácter por carácter idéntico al de la factura.
+function normalizarNombre(nombre: string) {
+  return nombre
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 function bufferToStream(buffer: Buffer) {
@@ -288,18 +300,34 @@ export async function pasarFacturasADriveYExcel(
     const yaTieneEnlace = row[6] !== undefined && row[6] !== null && String(row[6]).trim() !== "";
     if (yaTieneEnlace) continue;
 
-    const brutoRaw = row[2];
-    if (brutoRaw === undefined || brutoRaw === null || brutoRaw === "") continue;
-    const bruto = Number(brutoRaw);
-    if (Number.isNaN(bruto)) continue;
+    const nombreFila = String(row[0] ?? "").trim();
+    if (!nombreFila) continue;
+    const nombreFilaNorm = normalizarNombre(nombreFila);
 
-    const candidatos = invoices.filter((invoice) => {
+    // Emparejamiento principal: por nombre de negocio (columna A) contra el
+    // cliente de la factura. El importe (columna C) solo se usa como
+    // desempate si por casualidad hay más de una factura del mismo cliente
+    // en el mismo mes — el importe de la hoja puede estar desactualizado,
+    // así que no basta por sí solo.
+    let candidatos = invoices.filter((invoice) => {
       if (usedInvoiceIds.has(invoice.id)) return false;
       const url = invoiceDriveUrl.get(invoice.id);
       if (!url) return false;
-      const importe = round2(Number(invoice.subtotal) + Number(invoice.tax_amount));
-      return importe === round2(bruto);
+      const nombreCliente = String(invoice.client_snapshot?.business_name ?? "");
+      return normalizarNombre(nombreCliente) === nombreFilaNorm;
     });
+
+    if (candidatos.length > 1) {
+      const brutoRaw = row[2];
+      const bruto = brutoRaw !== undefined && brutoRaw !== null && brutoRaw !== "" ? Number(brutoRaw) : NaN;
+      if (!Number.isNaN(bruto)) {
+        const porImporte = candidatos.filter((invoice) => {
+          const importe = round2(Number(invoice.subtotal) + Number(invoice.tax_amount));
+          return importe === round2(bruto);
+        });
+        if (porImporte.length === 1) candidatos = porImporte;
+      }
+    }
 
     if (candidatos.length === 1) {
       const invoice = candidatos[0];
