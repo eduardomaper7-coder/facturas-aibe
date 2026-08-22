@@ -218,6 +218,21 @@ begin
 
   if not found then raise exception 'Configura primero los datos de empresa'; end if;
 
+  -- Si ya existe una factura para esta suscripción en este periodo, no
+  -- se repite (idempotente): se sale sin generar nada ni dar error. Esto
+  -- tiene que comprobarse ANTES del control de orden cronológico de
+  -- abajo, porque si no, reintentar generar una factura que ya existe
+  -- (por ejemplo al pulsar "Generar facturas del mes" varias veces)
+  -- puede chocar con facturas más recientes de otras suscripciones y
+  -- bloquear el botón con un error que no tiene sentido.
+  if exists (
+    select 1 from public.invoices
+    where subscription_id = p_subscription_id
+      and billing_period = p_billing_period
+  ) then
+    return null;
+  end if;
+
   -- La numeración debe ir siempre en el mismo orden que las fechas de
   -- emisión: el siguiente número nunca puede llevar una fecha
   -- anterior a la de la última factura ya emitida (correlativo por
@@ -327,6 +342,19 @@ begin
   for update;
 
   if not found then raise exception 'Empresa no configurada'; end if;
+
+  -- Mismo refuerzo que en issue_subscription_invoice: si ya existe
+  -- factura para esta suscripción y periodo, se sale sin más (el "on
+  -- conflict do nothing" de más abajo ya lo cubre a nivel de inserción,
+  -- pero hace falta cortar aquí también para no chocar antes de tiempo
+  -- con el control de orden cronológico).
+  if exists (
+    select 1 from public.invoices
+    where subscription_id = p_subscription_id
+      and billing_period = p_billing_period
+  ) then
+    return null;
+  end if;
 
   -- Mismo refuerzo que en issue_subscription_invoice: el orden de la
   -- numeración debe respetar siempre el orden de las fechas de
