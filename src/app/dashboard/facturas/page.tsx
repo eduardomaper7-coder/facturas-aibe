@@ -1,12 +1,14 @@
+import { CheckCircle2, Sparkles } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { currentPeriod } from "@/lib/dates";
-import { formatEuro } from "@/lib/money";
-import {
-  deleteInvoice,
-  generateMonthInvoices,
-  pasarADriveYExcel,
-  reenviarFacturaCorreo,
-} from "./actions";
+import { periodLabel } from "@/lib/ui";
+import { generateMonthInvoices } from "./actions";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardBody } from "@/components/ui/card";
+import { MonthPicker } from "@/components/ui/month-picker";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { ExportMenu } from "./export-menu";
+import { InvoicesTable, type InvoiceRow } from "./invoices-table";
 
 export default async function FacturasPage({
   searchParams,
@@ -25,9 +27,7 @@ export default async function FacturasPage({
   const params = await searchParams;
 
   const month =
-    params.month && /^\d{4}-\d{2}$/.test(params.month)
-      ? params.month
-      : currentPeriod();
+    params.month && /^\d{4}-\d{2}$/.test(params.month) ? params.month : currentPeriod();
 
   const driveResumen =
     params.drive === "1"
@@ -56,205 +56,73 @@ export default async function FacturasPage({
     throw new Error(error.message);
   }
 
+  const invoices: InvoiceRow[] = (data ?? []).map((invoice) => {
+    const client = invoice.client_snapshot as { business_name?: string; email?: string };
+
+    return {
+      id: invoice.id,
+      invoiceNumber: invoice.invoice_number,
+      issueDate: invoice.issue_date,
+      subtotal: Number(invoice.subtotal),
+      taxType: invoice.tax_type,
+      taxRate: Number(invoice.tax_rate),
+      taxAmount: Number(invoice.tax_amount),
+      irpfAmount: Number(invoice.irpf_amount),
+      totalAmount: Number(invoice.total_amount),
+      emailSentAt: invoice.email_sent_at,
+      emailError: invoice.email_error,
+      clientName: client.business_name ?? "—",
+      clientEmail: client.email ?? null,
+    };
+  });
+
   return (
     <>
-      <h1>Facturas — {month}</h1>
+      <PageHeader
+        title="Facturas"
+        description="Gestiona, genera y envía la facturación mensual."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <MonthPicker defaultValue={month} />
+            <ExportMenu period={month} />
+            <form action={generateMonthInvoices}>
+              <input type="hidden" name="period" value={month} />
+              <SubmitButton pendingText="Generando…">
+                <Sparkles className="size-4" />
+                Generar facturas del mes
+              </SubmitButton>
+            </form>
+          </div>
+        }
+      />
 
       {driveResumen && (
-        <div
-          className="card"
-          style={{
-            marginBottom: 20,
-            background: "#f0fdf4",
-            border: "1px solid #86efac",
-          }}
-        >
-          <strong>Facturas enviadas a Drive y Excel</strong>
-          <p style={{ marginTop: 6, marginBottom: 0 }}>
-            {driveResumen.subidas} subidas nuevas · {driveResumen.existian}{" "}
-            ya estaban en Drive · {driveResumen.enlazadas} enlazadas en la
-            hoja de cálculo
-            {driveResumen.sinMatch > 0 &&
-              ` · ${driveResumen.sinMatch} sin fila con ese importe en la hoja`}
-            {driveResumen.ambiguas > 0 &&
-              ` · ${driveResumen.ambiguas} con importe ambiguo (revisar a mano)`}
-            {!driveResumen.sheetEncontrada &&
-              " · No se encontró la hoja de cálculo del mes, no se ha podido enlazar nada"}
-            .
-          </p>
-        </div>
+        <Card className="mb-5 border-success-border bg-success-soft">
+          <CardBody className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+            <div className="text-[13px] text-success">
+              <p className="font-semibold">Facturas enviadas a Drive y Excel</p>
+              <p className="mt-1">
+                {driveResumen.subidas} subidas nuevas · {driveResumen.existian} ya estaban en Drive ·{" "}
+                {driveResumen.enlazadas} enlazadas en la hoja de cálculo
+                {driveResumen.sinMatch > 0 && ` · ${driveResumen.sinMatch} sin fila con ese importe en la hoja`}
+                {driveResumen.ambiguas > 0 && ` · ${driveResumen.ambiguas} con importe ambiguo (revisar a mano)`}
+                {!driveResumen.sheetEncontrada &&
+                  " · No se encontró la hoja de cálculo del mes, no se ha podido enlazar nada"}
+                .
+              </p>
+            </div>
+          </CardBody>
+        </Card>
       )}
 
-      <div className="card actions" style={{ marginBottom: 20 }}>
-        <form method="get" className="actions">
-          <input
-            name="month"
-            type="month"
-            defaultValue={month}
-            style={{ width: 190 }}
-          />
+      <p className="mb-3 text-[13px] text-muted">
+        Periodo: <span className="font-medium text-ink">{periodLabel(month, { capitalize: true })}</span>
+      </p>
 
-          <button type="submit" className="secondary">
-            Cambiar mes
-          </button>
-        </form>
-
-        <form action={generateMonthInvoices}>
-          <input type="hidden" name="period" value={month} />
-
-          <button type="submit">
-            Generar facturas del mes
-          </button>
-        </form>
-
-        <a
-          className="button secondary"
-          href={`/api/google-sheets?period=${month}`}
-        >
-          Volcar a Google Sheets
-        </a>
-
-        <form action={pasarADriveYExcel}>
-          <input type="hidden" name="period" value={month} />
-
-          <button
-            type="submit"
-            title="Sube los PDF de las facturas de este mes a la carpeta de Drive del mes (sin duplicados) y enlaza cada una en la columna G de la hoja de cálculo del mes."
-          >
-            Pasar facturas a Drive y Excel
-          </button>
-        </form>
-      </div>
-
-      <div className="card" style={{ overflowX: "auto" }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Factura</th>
-              <th>Emisión</th>
-              <th>Cliente</th>
-              <th>Base</th>
-              <th>Impuesto</th>
-              <th>IRPF</th>
-              <th>Total</th>
-              <th>PDF</th>
-              <th>Envío</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {(data ?? []).map((invoice) => {
-              const client = invoice.client_snapshot as {
-                business_name?: string;
-                email?: string;
-              };
-
-              return (
-                <tr key={invoice.id}>
-                  <td>
-                    <strong>{invoice.invoice_number}</strong>
-                  </td>
-
-                  <td>{invoice.issue_date}</td>
-
-                  <td>{client.business_name}</td>
-
-                  <td>{formatEuro(invoice.subtotal)}</td>
-
-                  <td>
-                    {invoice.tax_type} {invoice.tax_rate}% ·{" "}
-                    {formatEuro(invoice.tax_amount)}
-                  </td>
-
-                  <td>-{formatEuro(invoice.irpf_amount)}</td>
-
-                  <td>
-                    <strong>
-                      {formatEuro(invoice.total_amount)}
-                    </strong>
-                  </td>
-
-                  <td>
-                    <a
-                      className="button secondary"
-                      href={`/api/invoices/${invoice.id}/pdf`}
-                    >
-                      Descargar
-                    </a>
-                  </td>
-
-                  <td>
-                    {invoice.email_sent_at ? (
-                      <span style={{ color: "#16a34a", fontWeight: 600 }}>
-                        Factura Enviada Correctamente por correo
-                      </span>
-                    ) : !client.email ? (
-                      <span style={{ color: "#b45309", fontWeight: 600 }}>
-                        enviar factura vía whatsapp manualmente
-                      </span>
-                    ) : (
-                      <div style={{ display: "grid", gap: 6 }}>
-                        {invoice.email_error && (
-                          <small style={{ color: "#dc2626" }}>
-                            Error al enviar: {invoice.email_error}
-                          </small>
-                        )}
-
-                        <form action={reenviarFacturaCorreo}>
-                          <input
-                            type="hidden"
-                            name="invoice_id"
-                            value={invoice.id}
-                          />
-
-                          <button type="submit" className="secondary">
-                            {invoice.email_error
-                              ? "Reintentar envío"
-                              : "Reenviar por correo"}
-                          </button>
-                        </form>
-                      </div>
-                    )}
-                  </td>
-
-                  <td>
-                    <form action={deleteInvoice}>
-                      <input
-                        type="hidden"
-                        name="invoice_id"
-                        value={invoice.id}
-                      />
-
-                      <input
-                        type="hidden"
-                        name="month"
-                        value={month}
-                      />
-
-                      <button
-                        type="submit"
-                        className="danger"
-                        title={`Borrar la factura ${invoice.invoice_number}. Las facturas posteriores se renumeran automáticamente para cerrar el hueco.`}
-                      >
-                        Borrar
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-              );
-            })}
-
-            {(data ?? []).length === 0 && (
-              <tr>
-                <td colSpan={10}>
-                  No hay facturas para este mes.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card>
+        <InvoicesTable invoices={invoices} month={month} />
+      </Card>
     </>
   );
 }

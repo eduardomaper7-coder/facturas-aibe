@@ -1,163 +1,119 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import TaxFields from "@/components/tax-fields";
 import { createClientWithSubscription } from "../actions";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardBody } from "@/components/ui/card";
+import { Field, Input, Select, Textarea, Checkbox } from "@/components/ui/field";
+import { LinkButton } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default function NuevoClientePage() {
   return (
     <>
-      <h1>Nuevo cliente y suscripción</h1>
+      <PageHeader
+        title="Nuevo cliente"
+        description="Da de alta un cliente y su servicio recurrente."
+        actions={
+          <LinkButton href="/dashboard/clientes" variant="secondary" size="sm">
+            <ArrowLeft className="size-4" />
+            Volver
+          </LinkButton>
+        }
+      />
 
-      <form action={createClientWithSubscription} className="card grid">
-        <h2>Datos del cliente</h2>
+      <form action={createClientWithSubscription} className="space-y-5">
+        <Card>
+          <CardBody>
+            <h2 className="mb-4 text-[14px] font-semibold text-ink">Datos del cliente</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field label="Nombre del negocio">
+                <Input name="business_name" required />
+              </Field>
 
-        <div className="grid grid-2">
-          <label>
-            Nombre del negocio
-            <input name="business_name" required />
-          </label>
+              <Field label="NIF/CIF">
+                <Input name="tax_id" required />
+              </Field>
 
-          <label>
-            NIF/CIF
-            <input name="tax_id" required />
-          </label>
+              <Field label="Dirección">
+                <Input name="address" required />
+              </Field>
 
-          <label>
-            Dirección
-            <input name="address" required />
-          </label>
+              <Field label="Código postal">
+                <Input name="postal_code" />
+              </Field>
 
-          <label>
-            Código postal
-            <input name="postal_code" />
-          </label>
+              <Field label="Municipio">
+                <Input name="city" />
+              </Field>
 
-          <label>
-            Municipio
-            <input name="city" />
-          </label>
+              <Field label="Provincia">
+                <Input name="province" />
+              </Field>
 
-          <label>
-            Provincia
-            <input name="province" />
-          </label>
+              <Field label="País">
+                <Input name="country" defaultValue="España" />
+              </Field>
 
-          <label>
-            País
-            <input name="country" defaultValue="España" />
-          </label>
+              <Field label="Correo">
+                <Input name="email" type="email" />
+              </Field>
 
-          <label>
-            Correo
-            <input name="email" type="email" />
-          </label>
+              <Field label="Forma de pago">
+                <Select name="payment_method" defaultValue="Transferencia bancaria">
+                  <option value="Transferencia bancaria">Transferencia bancaria</option>
+                  <option value="Domiciliación bancaria">Domiciliación bancaria</option>
+                  <option value="Tarjeta">Tarjeta</option>
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Stripe">Stripe</option>
+                </Select>
+              </Field>
+            </div>
+          </CardBody>
+        </Card>
 
-          <label>
-            Forma de pago
-            <select
-              name="payment_method"
-              defaultValue="Transferencia bancaria"
-            >
-              <option value="Transferencia bancaria">
-                Transferencia bancaria
-              </option>
+        <Card>
+          <CardBody>
+            <h2 className="mb-4 text-[14px] font-semibold text-ink">Servicio recurrente</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field label="Nombre del servicio">
+                <Input name="service_name" required />
+              </Field>
 
-              <option value="Domiciliación bancaria">
-                Domiciliación bancaria
-              </option>
+              <Field label="Base imponible mensual">
+                <Input name="base_amount" type="number" min="0" step="0.01" required />
+              </Field>
 
-              <option value="Tarjeta">
-                Tarjeta
-              </option>
+              <Field label="Descripción" className="md:col-span-2">
+                <Textarea name="service_description" rows={3} />
+              </Field>
 
-              <option value="Efectivo">
-                Efectivo
-              </option>
+              <TaxFields />
 
-              <option value="Stripe">
-                Stripe
-              </option>
-            </select>
-          </label>
+              <Field
+                label="Día de renovación"
+                hint="Del 1 al 31. En meses más cortos se usará el último día."
+              >
+                <Input name="renewal_day" type="number" min="1" max="31" defaultValue="1" required />
+              </Field>
+
+              <Field label="Aplicar retención de IRPF" inline className="md:col-span-2">
+                <Checkbox name="apply_irpf" defaultChecked />
+              </Field>
+
+              <Field label="Porcentaje de IRPF">
+                <Input name="irpf_rate" type="number" min="0" step="0.01" defaultValue="7" required />
+              </Field>
+            </div>
+          </CardBody>
+        </Card>
+
+        <div className="flex justify-end gap-2">
+          <LinkButton href="/dashboard/clientes" variant="secondary">
+            Cancelar
+          </LinkButton>
+          <SubmitButton pendingText="Guardando…">Guardar cliente</SubmitButton>
         </div>
-
-        <h2>Servicio recurrente</h2>
-
-        <div className="grid grid-2">
-          <label>
-            Nombre del servicio
-            <input name="service_name" required />
-          </label>
-
-          <label>
-            Base imponible mensual
-            <input
-              name="base_amount"
-              type="number"
-              min="0"
-              step="0.01"
-              required
-            />
-          </label>
-
-          <label>
-            Descripción
-            <textarea
-              name="service_description"
-              rows={4}
-            />
-          </label>
-
-          <TaxFields />
-
-          <label>
-            Día de renovación
-            <input
-              name="renewal_day"
-              type="number"
-              min="1"
-              max="31"
-              defaultValue="1"
-              required
-            />
-
-            <small>
-              Puede ser del 1 al 31. En meses más cortos se usará
-              automáticamente el último día.
-            </small>
-          </label>
-
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <input
-              name="apply_irpf"
-              type="checkbox"
-              defaultChecked
-              style={{ width: "auto" }}
-            />
-
-            Aplicar retención de IRPF
-          </label>
-
-          <label>
-            Porcentaje de IRPF
-            <input
-              name="irpf_rate"
-              type="number"
-              min="0"
-              step="0.01"
-              defaultValue="7"
-              required
-            />
-          </label>
-        </div>
-
-        <button type="submit">
-          Guardar cliente
-        </button>
       </form>
     </>
   );

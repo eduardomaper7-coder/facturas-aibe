@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Facturas AIBE",
-  description: "Panel de facturación de AIBE",
+  description: "Panel de facturación de Aibe Technologies",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

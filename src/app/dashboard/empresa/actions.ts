@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 
 export async function saveCompany(formData: FormData) {
@@ -31,4 +32,5 @@ export async function saveCompany(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/empresa");
+  redirect("/dashboard/empresa?saved=1");
 }

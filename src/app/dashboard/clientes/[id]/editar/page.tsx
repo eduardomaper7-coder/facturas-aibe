@@ -1,8 +1,13 @@
-import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import TaxFields from "@/components/tax-fields";
 import { requireUser } from "@/lib/auth";
 import { updateClientWithSubscription } from "../../actions";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardBody } from "@/components/ui/card";
+import { Field, Input, Select, Textarea, Checkbox } from "@/components/ui/field";
+import { LinkButton } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type EditarClientePageProps = {
     params: Promise<{
@@ -72,249 +77,146 @@ export default async function EditarClientePage({
 
     return (
         <>
-            <div
-                className="actions"
-                style={{
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                }}
-            >
-                <h1>Editar cliente y suscripción</h1>
+            <PageHeader
+                title="Editar cliente"
+                description={client.business_name}
+                actions={
+                    <LinkButton href="/dashboard/clientes" variant="secondary" size="sm">
+                        <ArrowLeft className="size-4" />
+                        Volver
+                    </LinkButton>
+                }
+            />
 
-                <Link
-                    href="/dashboard/clientes"
-                    className="button secondary"
-                >
-                    Volver
-                </Link>
-            </div>
+            <form action={updateClientWithSubscription} className="space-y-5">
+                <input type="hidden" name="client_id" value={client.id} />
+                <input type="hidden" name="subscription_id" value={subscription.id} />
 
-            <form
-                action={updateClientWithSubscription}
-                className="card grid"
-            >
-                <input
-                    type="hidden"
-                    name="client_id"
-                    value={client.id}
-                />
+                <Card>
+                    <CardBody>
+                        <h2 className="mb-4 text-[14px] font-semibold text-ink">Datos del cliente</h2>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <Field label="Nombre del negocio">
+                                <Input name="business_name" defaultValue={client.business_name ?? ""} required />
+                            </Field>
 
-                <input
-                    type="hidden"
-                    name="subscription_id"
-                    value={subscription.id}
-                />
+                            <Field label="NIF/CIF">
+                                <Input name="tax_id" defaultValue={client.tax_id ?? ""} required />
+                            </Field>
 
-                <h2>Datos del cliente</h2>
+                            <Field label="Dirección">
+                                <Input name="address" defaultValue={client.address ?? ""} required />
+                            </Field>
 
-                <div className="grid grid-2">
-                    <label>
-                        Nombre del negocio
-                        <input
-                            name="business_name"
-                            defaultValue={client.business_name ?? ""}
-                            required
-                        />
-                    </label>
+                            <Field label="Código postal">
+                                <Input name="postal_code" defaultValue={client.postal_code ?? ""} />
+                            </Field>
 
-                    <label>
-                        NIF/CIF
-                        <input
-                            name="tax_id"
-                            defaultValue={client.tax_id ?? ""}
-                            required
-                        />
-                    </label>
+                            <Field label="Municipio">
+                                <Input name="city" defaultValue={client.city ?? ""} />
+                            </Field>
 
-                    <label>
-                        Dirección
-                        <input
-                            name="address"
-                            defaultValue={client.address ?? ""}
-                            required
-                        />
-                    </label>
+                            <Field label="Provincia">
+                                <Input name="province" defaultValue={client.province ?? ""} />
+                            </Field>
 
-                    <label>
-                        Código postal
-                        <input
-                            name="postal_code"
-                            defaultValue={client.postal_code ?? ""}
-                        />
-                    </label>
+                            <Field label="País">
+                                <Input name="country" defaultValue={client.country ?? "España"} />
+                            </Field>
 
-                    <label>
-                        Municipio
-                        <input
-                            name="city"
-                            defaultValue={client.city ?? ""}
-                        />
-                    </label>
+                            <Field label="Correo">
+                                <Input name="email" type="email" defaultValue={client.email ?? ""} />
+                            </Field>
 
-                    <label>
-                        Provincia
-                        <input
-                            name="province"
-                            defaultValue={client.province ?? ""}
-                        />
-                    </label>
+                            <Field label="Forma de pago">
+                                <Select
+                                    name="payment_method"
+                                    defaultValue={client.payment_method ?? "Transferencia bancaria"}
+                                >
+                                    <option value="Transferencia bancaria">Transferencia bancaria</option>
+                                    <option value="Domiciliación bancaria">Domiciliación bancaria</option>
+                                    <option value="Tarjeta">Tarjeta</option>
+                                    <option value="Efectivo">Efectivo</option>
+                                    <option value="Stripe">Stripe</option>
+                                </Select>
+                            </Field>
+                        </div>
+                    </CardBody>
+                </Card>
 
-                    <label>
-                        País
-                        <input
-                            name="country"
-                            defaultValue={client.country ?? "España"}
-                        />
-                    </label>
+                <Card>
+                    <CardBody>
+                        <h2 className="mb-4 text-[14px] font-semibold text-ink">Servicio recurrente</h2>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <Field label="Nombre del servicio">
+                                <Input
+                                    name="service_name"
+                                    defaultValue={subscription.service_name ?? ""}
+                                    required
+                                />
+                            </Field>
 
-                    <label>
-                        Correo
-                        <input
-                            name="email"
-                            type="email"
-                            defaultValue={client.email ?? ""}
-                        />
-                    </label>
+                            <Field label="Base imponible mensual">
+                                <Input
+                                    name="base_amount"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    defaultValue={subscription.base_amount ?? 0}
+                                    required
+                                />
+                            </Field>
 
-                    <label>
-                        Forma de pago
-                        <select
-                            name="payment_method"
-                            defaultValue={
-                                client.payment_method ??
-                                "Transferencia bancaria"
-                            }
-                        >
-                            <option value="Transferencia bancaria">
-                                Transferencia bancaria
-                            </option>
+                            <Field label="Descripción" className="md:col-span-2">
+                                <Textarea
+                                    name="service_description"
+                                    rows={3}
+                                    defaultValue={subscription.service_description ?? ""}
+                                />
+                            </Field>
 
-                            <option value="Domiciliación bancaria">
-                                Domiciliación bancaria
-                            </option>
+                            <TaxFields
+                                initialTaxType={subscription.tax_type ?? "IGIC"}
+                                initialTaxRate={Number(subscription.tax_rate ?? 7)}
+                            />
 
-                            <option value="Tarjeta">
-                                Tarjeta
-                            </option>
+                            <Field
+                                label="Día de renovación"
+                                hint="Del 1 al 31. En meses más cortos se usará el último día."
+                            >
+                                <Input
+                                    name="renewal_day"
+                                    type="number"
+                                    min="1"
+                                    max="31"
+                                    defaultValue={subscription.renewal_day ?? 1}
+                                    required
+                                />
+                            </Field>
 
-                            <option value="Efectivo">
-                                Efectivo
-                            </option>
+                            <Field label="Aplicar retención de IRPF" inline className="md:col-span-2">
+                                <Checkbox name="apply_irpf" defaultChecked={subscription.apply_irpf ?? false} />
+                            </Field>
 
-                            <option value="Stripe">
-                                Stripe
-                            </option>
-                        </select>
-                    </label>
-                </div>
+                            <Field label="Porcentaje de IRPF">
+                                <Input
+                                    name="irpf_rate"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    defaultValue={subscription.irpf_rate ?? 7}
+                                    required
+                                />
+                            </Field>
+                        </div>
+                    </CardBody>
+                </Card>
 
-                <h2>Servicio recurrente</h2>
-
-                <div className="grid grid-2">
-                    <label>
-                        Nombre del servicio
-                        <input
-                            name="service_name"
-                            defaultValue={subscription.service_name ?? ""}
-                            required
-                        />
-                    </label>
-
-                    <label>
-                        Base imponible mensual
-                        <input
-                            name="base_amount"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            defaultValue={subscription.base_amount ?? 0}
-                            required
-                        />
-                    </label>
-
-                    <label>
-                        Descripción
-                        <textarea
-                            name="service_description"
-                            rows={4}
-                            defaultValue={
-                                subscription.service_description ?? ""
-                            }
-                        />
-                    </label>
-
-                    <TaxFields
-                        initialTaxType={subscription.tax_type ?? "IGIC"}
-                        initialTaxRate={Number(
-                            subscription.tax_rate ?? 7
-                        )}
-                    />
-
-                    <label>
-                        Día de renovación
-                        <input
-                            name="renewal_day"
-                            type="number"
-                            min="1"
-                            max="31"
-                            defaultValue={subscription.renewal_day ?? 1}
-                            required
-                        />
-
-                        <small>
-                            Puede ser del 1 al 31. En meses más cortos se
-                            usará automáticamente el último día.
-                        </small>
-                    </label>
-
-                    <label
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                        }}
-                    >
-                        <input
-                            name="apply_irpf"
-                            type="checkbox"
-                            defaultChecked={
-                                subscription.apply_irpf ?? false
-                            }
-                            style={{ width: "auto" }}
-                        />
-
-                        Aplicar retención de IRPF
-                    </label>
-
-                    <label>
-                        Porcentaje de IRPF
-                        <input
-                            name="irpf_rate"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            defaultValue={subscription.irpf_rate ?? 7}
-                            required
-                        />
-                    </label>
-                </div>
-
-                <div
-                    className="actions"
-                    style={{
-                        justifyContent: "flex-end",
-                    }}
-                >
-                    <Link
-                        href="/dashboard/clientes"
-                        className="button secondary"
-                    >
+                <div className="flex justify-end gap-2">
+                    <LinkButton href="/dashboard/clientes" variant="secondary">
                         Cancelar
-                    </Link>
-
-                    <button type="submit">
-                        Guardar cambios
-                    </button>
+                    </LinkButton>
+                    <SubmitButton pendingText="Guardando…">Guardar cambios</SubmitButton>
                 </div>
             </form>
         </>

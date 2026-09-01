@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Field, Input, Select } from "@/components/ui/field";
 
 type TaxFieldsProps = {
     initialTaxType?: string;
@@ -66,35 +67,25 @@ export default function TaxFields({
 
     return (
         <>
-            <label>
-                Tipo de impuesto
-
-                <select
-                    name="tax_type"
-                    value={taxType}
-                    onChange={handleTaxTypeChange}
-                >
+            <Field label="Tipo de impuesto">
+                <Select name="tax_type" value={taxType} onChange={handleTaxTypeChange}>
                     <option value="IVA">IVA</option>
                     <option value="IGIC">IGIC</option>
                     <option value="EXENTO">Exento</option>
-                </select>
-            </label>
+                </Select>
+            </Field>
 
-            <label>
-                Porcentaje de impuesto
-
-                <input
+            <Field label="Porcentaje de impuesto">
+                <Input
                     name="tax_rate"
                     type="number"
                     min="0"
                     step="0.01"
                     value={taxRate}
-                    onChange={(event) =>
-                        setTaxRate(event.target.value)
-                    }
+                    onChange={(event) => setTaxRate(event.target.value)}
                     required
                 />
-            </label>
+            </Field>
         </>
     );
 }

@@ -1,61 +1,123 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f5f7fb;
-  --foreground: #172033;
-  --card: #ffffff;
-  --border: #dce2ea;
-  --primary: #2563eb;
+@theme {
+  /* Brand */
+  --color-primary: #2f6fed;
+  --color-primary-hover: #2157c4;
+  --color-primary-active: #1a48a8;
+  --color-primary-soft: #eaf1ff;
+  --color-primary-soft-hover: #dbe7ff;
+
+  --color-navy: #0b1b33;
+  --color-navy-soft: #16294a;
+  --color-navy-softer: #1e3559;
+
+  --color-ink: #101828;
+  --color-muted: #64748b;
+  --color-muted-soft: #94a3b8;
+
+  --color-bg: #f4f6fb;
+  --color-surface: #ffffff;
+  --color-border: #e4e9f2;
+  --color-border-strong: #d3dbe8;
+
+  --color-success: #15803d;
+  --color-success-strong: #16a34a;
+  --color-success-soft: #ecfdf3;
+  --color-success-border: #b7ecc7;
+
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-danger-border: #fbcaca;
+
+  --color-warning: #b45309;
+  --color-warning-soft: #fffbeb;
+  --color-warning-border: #fde3ab;
+
+  --color-info: #2f6fed;
+  --color-info-soft: #eaf1ff;
+  --color-info-border: #c9dcff;
+
+  /*
+   * Pila de fuentes del sistema (sin dependencias de red): en Windows
+   * resuelve a Segoe UI / Segoe UI Variable, en macOS a San Francisco y
+   * en Linux a Inter/Roboto si están instaladas. Visualmente muy cercana
+   * a Inter y evita que el arranque de la app dependa de Google Fonts.
+   */
+  --font-sans: "Segoe UI Variable", "Segoe UI", Inter, -apple-system, BlinkMacSystemFont,
+    ui-sans-serif, Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --shadow-xs: 0 1px 2px 0 rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(16, 24, 40, 0.06), 0 1px 2px -1px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 14px -4px rgba(16, 24, 40, 0.10), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 12px 32px -8px rgba(11, 27, 51, 0.16);
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
 body {
   margin: 0;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-a { color: inherit; text-decoration: none; }
-input, select, textarea, button { font: inherit; }
-input, select, textarea {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  background: white;
+
+a {
+  color: inherit;
 }
-button, .button {
-  border: 0;
-  border-radius: 8px;
-  padding: 10px 14px;
-  background: var(--primary);
-  color: white;
-  cursor: pointer;
-  display: inline-block;
+
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-active);
 }
-button.secondary, .button.secondary {
-  background: #e8edf5;
-  color: #172033;
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
-button.danger, .button.danger {
-  background: #dc2626;
-  color: white;
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 20px;
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
 }
-.grid { display: grid; gap: 16px; }
-.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-label { display: grid; gap: 6px; font-weight: 600; }
-small { font-weight: 400; color: #657087; }
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: 12px; border-bottom: 1px solid var(--border); text-align: left; }
-th { font-size: 13px; color: #657087; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; }
-@media (max-width: 800px) {
-  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+
+@keyframes aibe-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: aibe-fade-in 0.18s ease-out;
+}
+
+@keyframes aibe-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.animate-pulse-soft {
+  animation: aibe-pulse 1.6s ease-in-out infinite;
 }
