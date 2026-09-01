@@ -12,6 +12,7 @@
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
     "googleapis": "latest",
+    "imapflow": "^1.7.8",
     "next": "latest",
     "nodemailer": "latest",
     "pdf-lib": "latest",
@@ -20,6 +21,7 @@
     "zod": "latest"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "latest",
     "@types/node": "latest",
     "@types/nodemailer": "latest",
     "@types/react": "latest",
@@ -27,7 +29,6 @@
     "eslint": "latest",
     "eslint-config-next": "latest",
     "tailwindcss": "latest",
-    "@tailwindcss/postcss": "latest",
     "typescript": "latest"
   }
 }

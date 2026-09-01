@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import MailComposer from "nodemailer/lib/mail-composer";
+import { ImapFlow } from "imapflow";
 import { createInvoicePdf } from "@/lib/pdf";
 
 /*
@@ -7,6 +9,14 @@ import { createInvoicePdf } from "@/lib/pdf";
  * usuario y contraseña del propio buzón. Se usa tanto desde el cron
  * diario (facturas generadas automáticamente) como desde el botón manual
  * "Generar facturas del mes" y desde el botón de reenvío del panel.
+ *
+ * Tras cada envío correcto, se guarda además una copia idéntica del
+ * correo en la carpeta "Enviados" (INBOX.Sent) del buzón vía IMAP, para
+ * que se pueda verificar el envío directamente desde el webmail de
+ * Hostinger — un envío por SMTP puro, como el que hace nodemailer, no
+ * queda copiado ahí automáticamente (eso solo lo hace el propio cliente
+ * de correo al redactar). Si ese guardado falla, no afecta al resultado
+ * del envío: la factura ya se entregó igualmente.
  */
 
 function getTransporter() {
@@ -27,6 +37,59 @@ function getTransporter() {
     secure: port === 465,
     auth: { user, pass },
   });
+}
+
+/*
+ * Guarda en INBOX.Sent una copia exacta del correo que se acaba de enviar
+ * por SMTP, para que aparezca en "Enviados" en el webmail de Hostinger.
+ * Usa el mismo usuario/contraseña que el SMTP (IMAP_USER/IMAP_PASSWORD
+ * permiten sobreescribirlo si algún día hiciera falta). Nunca lanza: un
+ * fallo aquí solo se registra en consola, no debe tumbar el envío ya
+ * hecho.
+ */
+async function guardarCopiaEnEnviados(mailOptions: Record<string, any>) {
+  const host = process.env.IMAP_HOST || "imap.hostinger.com";
+  const port = Number(process.env.IMAP_PORT ?? 993);
+  const user = process.env.IMAP_USER || process.env.SMTP_USER;
+  const pass = process.env.IMAP_PASSWORD || process.env.SMTP_PASSWORD;
+
+  if (!user || !pass) return;
+
+  let client: ImapFlow | null = null;
+
+  try {
+    const composer = new MailComposer(mailOptions);
+    const raw: Buffer = await new Promise((resolve, reject) => {
+      composer.compile().build((err: Error | null, message: Buffer) => {
+        if (err) reject(err);
+        else resolve(message);
+      });
+    });
+
+    client = new ImapFlow({
+      host,
+      port,
+      secure: true,
+      auth: { user, pass },
+      logger: false,
+    });
+
+    await client.connect();
+    await client.append("INBOX.Sent", raw, ["\\Seen"]);
+  } catch (err) {
+    console.warn(
+      "No se pudo guardar la copia en Enviados (el correo sí se envió):",
+      err instanceof Error ? err.message : err
+    );
+  } finally {
+    if (client) {
+      try {
+        await client.logout();
+      } catch {
+        // ignoramos errores al cerrar la conexión IMAP
+      }
+    }
+  }
 }
 
 type InvoiceForEmail = {
@@ -77,7 +140,7 @@ export async function enviarFacturaPorCorreo(
     const nombreEmisor =
       seller.trade_name || seller.legal_name || "AIBE Technologies";
 
-    await transporter.sendMail({
+    const mailOptions = {
       from: `"${nombreEmisor}" <${process.env.SMTP_USER}>`,
       to: email,
       subject: `Factura ${invoice.invoice_number}`,
@@ -92,7 +155,12 @@ export async function enviarFacturaPorCorreo(
           content: pdf,
         },
       ],
-    });
+      messageId: `<${invoice.invoice_number}.${Date.now()}@aibetech.es>`,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    await guardarCopiaEnEnviados(mailOptions);
 
     return { enviado: true };
   } catch (err) {
