@@ -39,7 +39,16 @@ export function ConfirmSubmitMenuItem({
         icon={icon}
         danger
         onClick={() => {
-          closeMenu?.();
+          // Importante: NO cerrar el menú desplegable aquí. closeMenu()
+          // pone en false el "open" del DropdownMenu padre, y ese estado
+          // controla el bloque `{open && children(...)}` dentro del que
+          // vive esta misma instancia de ConfirmSubmitMenuItem. Si se
+          // llamara aquí junto con setOpen(true), React agruparía ambas
+          // actualizaciones y desmontaría este componente en el mismo
+          // render en el que intenta mostrar su modal, así que el modal
+          // nunca llega a pintarse (el clic "no hace nada"). El modal es
+          // un overlay a pantalla completa (fixed inset-0), así que puede
+          // quedar montado por encima del menú sin problema visual.
           setOpen(true);
         }}
       >
@@ -73,15 +82,27 @@ export function ConfirmSubmitMenuItem({
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setOpen(false)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setOpen(false);
+                  closeMenu?.();
+                }}
+              >
                 Cancelar
               </Button>
               <Button
                 variant="danger"
                 size="sm"
                 onClick={() => {
+                  // El envío se dispara primero, mientras el formulario
+                  // todavía está montado; cerrar el modal y el menú justo
+                  // después es seguro porque React no desmonta el DOM de
+                  // forma síncrona dentro del propio manejador del clic.
                   formRef.current?.requestSubmit();
                   setOpen(false);
+                  closeMenu?.();
                 }}
               >
                 {confirmLabel}
