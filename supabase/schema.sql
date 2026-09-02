@@ -424,17 +424,17 @@ revoke all on function public.issue_subscription_invoice_admin(uuid, date, text)
 grant execute on function public.issue_subscription_invoice_admin(uuid, date, text) to service_role;
 
 
--- Borrar una factura y CERRAR EL HUECO al instante: la fila
--- desaparece de verdad (como pediste) y, en el mismo movimiento,
--- todas las facturas del mismo usuario emitidas después se
--- renumeran una posición hacia abajo, así la secuencia
--- 0001, 0002, 0003... nunca tiene saltos.
+-- Borrar factura: SOLO se permite borrar la ÚLTIMA factura emitida (la
+-- de número correlativo más alto). Se borra la fila de verdad y se
+-- libera su número: la próxima factura que se emita lo reutiliza. Si
+-- se intenta borrar cualquier otra factura, se rechaza con un error,
+-- precisamente para no tener que renumerar facturas posteriores ya
+-- emitidas/enviadas y no romper así el orden correlativo.
 --
--- Aviso importante (deja constancia en el propio código): si alguna
--- de las facturas renumeradas ya se había descargado/enviado a un
--- cliente con su número anterior, ese número cambia igualmente. Esa
--- es la contrapartida de garantizar cero huecos siempre, y así se
--- decidió usarlo a propósito.
+-- (Versión anterior: permitía borrar cualquier factura y renumeraba
+-- todas las posteriores para cerrar el hueco, lo que podía cambiar el
+-- número de facturas ya enviadas a un cliente. Se restringió a
+-- petición expresa: solo la última factura se puede borrar.)
 create or replace function public.delete_invoice(p_invoice_id uuid)
 returns void
 language plpgsql
@@ -445,17 +445,17 @@ declare
   v_user_id uuid := auth.uid();
   v_invoice public.invoices;
   v_deleted_seq integer;
-  v_row record;
-  v_new_number text;
+  v_last_invoice_number text;
+  v_last_seq integer;
 begin
   if v_user_id is null then
     raise exception 'No autenticado';
   end if;
 
   -- Bloquea la fila de configuración de la empresa para que dos
-  -- borrados simultáneos del mismo usuario no puedan renumerar y
-  -- decrementar el contador a la vez (misma técnica que usa
-  -- issue_subscription_invoice para serializar la creación).
+  -- borrados simultáneos del mismo usuario no puedan decrementar el
+  -- contador a la vez (misma técnica que usa issue_subscription_invoice
+  -- para serializar la creación).
   perform 1
   from public.company_settings
   where user_id = v_user_id
@@ -476,33 +476,24 @@ begin
     raise exception 'No se ha podido interpretar el número de la factura a borrar (%)', v_invoice.invoice_number;
   end if;
 
-  -- Deja pasar, solo dentro de esta transacción, el renumerado
-  -- controlado que viene a continuación (el trigger de protección lo
-  -- comprueba y en cualquier otro caso sigue bloqueando cambios de
-  -- número o fecha).
-  perform set_config('facturas.allow_renumber', 'on', true);
+  -- Busca cuál es, de todas las facturas del usuario, la de número
+  -- correlativo más alto (la última emitida).
+  select invoice_number, substring(invoice_number from '(\d+)$')::integer
+  into v_last_invoice_number, v_last_seq
+  from public.invoices
+  where user_id = v_user_id
+  order by substring(invoice_number from '(\d+)$')::integer desc
+  limit 1;
+
+  if v_deleted_seq < v_last_seq then
+    raise exception 'Solo se puede borrar la última factura emitida (%). Borrar "%" dejaría un hueco en la numeración correlativa.', v_last_invoice_number, v_invoice.invoice_number;
+  end if;
 
   delete from public.invoices
   where id = p_invoice_id and user_id = v_user_id;
 
-  for v_row in
-    select id, invoice_number
-    from public.invoices
-    where user_id = v_user_id
-      and substring(invoice_number from '(\d+)$')::integer > v_deleted_seq
-    order by substring(invoice_number from '(\d+)$')::integer asc
-  loop
-    v_new_number := regexp_replace(
-      v_row.invoice_number,
-      '(\d+)$',
-      lpad((substring(v_row.invoice_number from '(\d+)$')::integer - 1)::text, 4, '0')
-    );
-
-    update public.invoices
-    set invoice_number = v_new_number
-    where id = v_row.id;
-  end loop;
-
+  -- Libera el número: la próxima factura que se emita reutilizará este
+  -- mismo correlativo, así nunca queda un hueco.
   update public.company_settings
   set next_invoice_number = greatest(next_invoice_number - 1, 1),
       updated_at = now()

@@ -41,23 +41,33 @@ export default async function FacturasPage({
         }
       : null;
 
-  const { supabase } = await requireUser();
+  const { user, supabase } = await requireUser();
 
-  const { data, error } = await supabase
-    .from("invoices")
-    .select(
-      "id,invoice_number,issue_date,subtotal,tax_type,tax_rate,tax_amount,irpf_amount,total_amount,status,client_snapshot,email_sent_at,email_error"
-    )
-    .eq("billing_period", month)
-    .order("issue_date", { ascending: false })
-    .order("invoice_number", { ascending: false });
+  const [{ data, error }, { data: companySettings }] = await Promise.all([
+    supabase
+      .from("invoices")
+      .select(
+        "id,invoice_number,issue_date,subtotal,tax_type,tax_rate,tax_amount,irpf_amount,total_amount,status,client_snapshot,email_sent_at,email_error"
+      )
+      .eq("billing_period", month)
+      .order("issue_date", { ascending: false })
+      .order("invoice_number", { ascending: false }),
+    // La última factura emitida (globalmente, no solo de este mes) es la
+    // única que se puede borrar: se usa para saber qué fila puede ofrecer
+    // esa acción. next_invoice_number - 1 es siempre ese correlativo,
+    // porque delete_invoice() lo mantiene así (ver supabase/schema.sql).
+    supabase.from("company_settings").select("next_invoice_number").eq("user_id", user.id).maybeSingle(),
+  ]);
 
   if (error) {
     throw new Error(error.message);
   }
 
+  const lastIssuedSequence = (companySettings?.next_invoice_number ?? 1) - 1;
+
   const invoices: InvoiceRow[] = (data ?? []).map((invoice) => {
     const client = invoice.client_snapshot as { business_name?: string; email?: string };
+    const sequence = Number(invoice.invoice_number.match(/(\d+)$/)?.[0] ?? NaN);
 
     return {
       id: invoice.id,
@@ -73,6 +83,7 @@ export default async function FacturasPage({
       emailError: invoice.email_error,
       clientName: client.business_name ?? "—",
       clientEmail: client.email ?? null,
+      isLastIssued: sequence === lastIssuedSequence,
     };
   });
 

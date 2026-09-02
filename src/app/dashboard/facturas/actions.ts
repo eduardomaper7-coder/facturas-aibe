@@ -134,11 +134,15 @@ export async function generateMonthInvoices(formData: FormData) {
 
 /*
  * El borrado ya no es un simple DELETE: pasa por la función
- * delete_invoice() de la base de datos, que borra la factura y
- * renumera al instante todas las posteriores para cerrar el hueco,
- * así la numeración correlativa (0001, 0002, 0003...) nunca tiene
- * saltos. La tabla ya no admite un DELETE directo desde el cliente
- * (bloqueado a nivel de base de datos), así que esta es la única vía.
+ * delete_invoice() de la base de datos. Esa función SOLO permite
+ * borrar la última factura emitida (la de número correlativo más
+ * alto): la borra y libera su número para que la próxima factura que
+ * se emita lo reutilice. Si se intenta borrar cualquier otra, la
+ * función la rechaza con un error, precisamente para no tener que
+ * renumerar facturas posteriores ya emitidas/enviadas y así no romper
+ * nunca el orden correlativo. La tabla ya no admite un DELETE directo
+ * desde el cliente (bloqueado a nivel de base de datos), así que esta
+ * es la única vía.
  */
 export async function deleteInvoice(formData: FormData) {
   const invoiceId = String(formData.get("invoice_id") ?? "");

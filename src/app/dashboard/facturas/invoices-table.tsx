@@ -25,6 +25,8 @@ export type InvoiceRow = {
   emailError: string | null;
   clientName: string;
   clientEmail: string | null;
+  /** Solo la última factura emitida (número correlativo más alto) se puede borrar. */
+  isLastIssued: boolean;
 };
 
 export function InvoicesTable({ invoices, month }: { invoices: InvoiceRow[]; month: string }) {
@@ -90,36 +92,40 @@ export function InvoicesTable({ invoices, month }: { invoices: InvoiceRow[]; mon
                 </Td>
                 <Td>
                   <div className="flex justify-end">
-                    <DropdownMenu>
-                      {(close) => (
-                        <>
-                          {invoice.clientEmail && (
-                            <SubmitMenuItem
-                              action={reenviarFacturaCorreo}
-                              hiddenFields={{ invoice_id: invoice.id }}
-                              label={invoice.emailError ? "Reintentar envío" : "Reenviar por correo"}
-                              icon={Mail}
-                              closeMenu={close}
-                            />
-                          )}
-                          <ConfirmSubmitMenuItem
-                            action={deleteInvoice}
-                            hiddenFields={{ invoice_id: invoice.id, month }}
-                            label="Borrar factura"
-                            icon={Trash2}
-                            confirmTitle="Borrar factura"
-                            confirmDescription={
-                              <>
-                                Se borrará la factura <strong>{invoice.invoiceNumber}</strong>. Las
-                                facturas posteriores se renumerarán automáticamente para cerrar el
-                                hueco.
-                              </>
-                            }
-                            closeMenu={close}
-                          />
-                        </>
-                      )}
-                    </DropdownMenu>
+                    {(invoice.clientEmail || invoice.isLastIssued) && (
+                      <DropdownMenu>
+                        {(close) => (
+                          <>
+                            {invoice.clientEmail && (
+                              <SubmitMenuItem
+                                action={reenviarFacturaCorreo}
+                                hiddenFields={{ invoice_id: invoice.id }}
+                                label={invoice.emailError ? "Reintentar envío" : "Reenviar por correo"}
+                                icon={Mail}
+                                closeMenu={close}
+                              />
+                            )}
+                            {invoice.isLastIssued && (
+                              <ConfirmSubmitMenuItem
+                                action={deleteInvoice}
+                                hiddenFields={{ invoice_id: invoice.id, month }}
+                                label="Borrar factura"
+                                icon={Trash2}
+                                confirmTitle="Borrar factura"
+                                confirmDescription={
+                                  <>
+                                    Se borrará la factura <strong>{invoice.invoiceNumber}</strong> y
+                                    quedará libre su número: la próxima factura que emitas lo
+                                    reutilizará. Solo puede borrarse porque es la última emitida.
+                                  </>
+                                }
+                                closeMenu={close}
+                              />
+                            )}
+                          </>
+                        )}
+                      </DropdownMenu>
+                    )}
                   </div>
                 </Td>
               </Tr>
