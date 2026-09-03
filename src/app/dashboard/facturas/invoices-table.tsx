@@ -70,9 +70,13 @@ export function InvoicesTable({ invoices, month }: { invoices: InvoiceRow[]; mon
                 <Td>{invoice.clientName}</Td>
                 <Td>{formatEuro(invoice.subtotal)}</Td>
                 <Td className="text-muted">
-                  {invoice.taxType} {invoice.taxRate}% · {formatEuro(invoice.taxAmount)}
+                  {invoice.taxType === "EXENTO"
+                    ? "Sin impuesto"
+                    : `${invoice.taxType} ${invoice.taxRate}% · ${formatEuro(invoice.taxAmount)}`}
                 </Td>
-                <Td className="text-muted">− {formatEuro(invoice.irpfAmount)}</Td>
+                <Td className="text-muted">
+                  {Number(invoice.irpfAmount) > 0 ? `− ${formatEuro(invoice.irpfAmount)}` : "—"}
+                </Td>
                 <Td>
                   <span className="font-semibold text-ink">{formatEuro(invoice.totalAmount)}</span>
                 </Td>

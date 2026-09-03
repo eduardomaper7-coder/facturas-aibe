@@ -177,19 +177,33 @@ export async function createInvoicePdf(invoice: Invoice) {
 
   text(euro(invoice.subtotal), width - 130, tableTop - 48, 10);
 
+  // "EXENTO" es el tax_type que representa "sin impuesto" (casilla
+  // "Aplicar impuesto" desmarcada al crear/editar el cliente). En ese
+  // caso no se imprime ninguna línea de impuesto, en vez de "EXENTO 0%".
+  const showTax = invoice.tax_type !== "EXENTO";
+  // Igualmente, si no se retiene IRPF (casilla desmarcada), irpf_rate se
+  // guarda como 0 y no debe aparecer ninguna línea al respecto.
+  const showIrpf = Number(invoice.irpf_rate) > 0;
+
   let y = tableTop - boxHeight - 40;
 
   text("Base imponible", 320, y);
   text(euro(invoice.subtotal), 465, y, 10, true);
   y -= 22;
 
-  text(`${invoice.tax_type} ${invoice.tax_rate}%`, 320, y);
-  text(euro(invoice.tax_amount), 465, y, 10, true);
-  y -= 22;
+  if (showTax) {
+    text(`${invoice.tax_type} ${invoice.tax_rate}%`, 320, y);
+    text(euro(invoice.tax_amount), 465, y, 10, true);
+    y -= 22;
+  }
 
-  text(`Retención IRPF ${invoice.irpf_rate}%`, 320, y);
-  text(`-${euro(invoice.irpf_amount)}`, 465, y, 10, true);
-  y -= 28;
+  if (showIrpf) {
+    text(`Retención IRPF ${invoice.irpf_rate}%`, 320, y);
+    text(`-${euro(invoice.irpf_amount)}`, 465, y, 10, true);
+    y -= 22;
+  }
+
+  y -= 6;
 
   text("TOTAL A PAGAR", 320, y, 12, true);
   text(euro(invoice.total_amount), 455, y, 13, true);

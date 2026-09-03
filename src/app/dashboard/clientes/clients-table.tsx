@@ -202,9 +202,13 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                   </Td>
                   <Td>
                     {client.subscription ? (
-                      <Badge tone={taxTone[client.subscription.taxType] ?? "neutral"}>
-                        {client.subscription.taxType} {client.subscription.taxRate}%
-                      </Badge>
+                      client.subscription.taxType === "EXENTO" ? (
+                        <Badge tone="neutral">Sin impuesto</Badge>
+                      ) : (
+                        <Badge tone={taxTone[client.subscription.taxType] ?? "neutral"}>
+                          {client.subscription.taxType} {client.subscription.taxRate}%
+                        </Badge>
+                      )
                     ) : (
                       <span className="text-muted">—</span>
                     )}
